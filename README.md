@@ -1,6 +1,6 @@
 # Skype
 
-Skype calls from the command line on OS X
+Skype calls from the command line on OS X, updated.
 
 ## Installation
 
