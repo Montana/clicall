@@ -1,0 +1,73 @@
+#!/usr/bin/env ruby
+
+require 'rainbow'
+require 'csv'
+require 'ruby' 
+
+home = Dir.home
+rc = '.skyperc'
+rc_full = File.join(home, rc)
+
+unless File.exists?(rc_full)
+  puts 'You need to export your contact list:'.color(:red)
+  puts '1. Quit Skype'
+  puts '2. Run `exsc <your-skype-name>`'
+  exit(0)
+end
+
+def help
+  h = <<-HELP.gsub(/^\s+/, '')
+    Usage: skype call <friend>
+  HELP
+
+  print h.color(:red)
+end
+
+if ARGV[0] != 'call'
+  puts 'Unknown command'.color(:red)
+  help
+  exit(0)
+end
+
+if ARGV[1].nil? || ARGV[1].empty?
+  puts 'Missing friend'.color(:red)
+  puts 'Try again'.color(:yellow)
+  help
+  exit(0)
+end
+
+contacts = []
+CSV.foreach(rc_full) do |row|
+  contacts << { skypename: row.fetch(0), displayname: row.fetch(1) }
+end
+
+matches = contacts.select { |contact| (contact.fetch(:displayname) =~ /#{ARGV.fetch(1)}/i).is_a?(Fixnum) }
+
+if matches.count > 1
+  puts 'More than on contact was found:'
+  matches.each { |match| puts "%-40s %-40s" % ["#{"Skype name".color(:green)}: #{match.fetch(:skypename)}", "#{"Display name".color(:green)}: #{match.fetch(:displayname)}"] }
+  puts 'Please use the exact Skype name.'
+  exit(0)
+elsif matches.count == 0
+  puts 'Cannot find this contact...'.color(:red)
+  exit(0)
+else
+
+  applescript = <<-AS.gsub(/^\s+/, '')
+    tell application "Skype"
+      activate
+      delay 2
+      tell application "System Events" to keystroke return
+      get URL "skype:#{matches.first.fetch(:skypename)}?call"
+    end tell
+  AS
+
+  success = system("osascript -e '#{applescript}'")
+  if success.nil? || !success
+    puts 'Unknown error'.color(:red)
+    exit(0)
+  else
+    puts 'Calling...'.color(:green)
+  end
+end
+
